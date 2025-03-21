@@ -48,4 +48,4 @@ X = hookmetamethod(game, "__namecall", function(self, ...)
     end
     return X(self, ...)
 end)
-print("🟢Bypass Byfron Activate🟢")
+warn("🟢Bypass Byfron Activate🟢")
