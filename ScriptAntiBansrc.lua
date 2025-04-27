@@ -1,51 +1,56 @@
 --[[
     Desenvolvido por Salomao129
-    Versão: 1.0
+    Versão: 1.1 (Protegido contra erros)
 ]]--
-local X
-X = hookmetamethod(game, "__namecall", function(self, ...)
-    local method = getnamecallmethod()
-    local args = {...}
-    if method == "Ban" then
-        local eval1 = {false}
-        local eval2 = {false}
-        if debug and debug.traceback and self.Parent == nil then
-            local stack = debug.traceback("", 3)
-            local counter = 0
-            local expected = 0
-            for v in string.gmatch(stack, "[^\n]+") do
-                if v:find(game.Players.LocalPlayer.Name) or v:find("Ban") or v:find("Packet") or v:find("Network") then
-                    counter = counter + 1
-                elseif tonumber(v) then
-                    expected = expected + tonumber(v)
-                end
-            end
-            if counter == expected then
-                eval1 = {true, counter + 5}
-            end
-        end
-        if eval1[1] then
-            if #args == eval1[2] then
-                local counter = 0
-                local outgoingkey
-                for i, v in pairs(args) do
-                    if v == game.Players.LocalPlayer.Name or v == "Ban" or v == "Packet" or v == "Network" then
+
+local originalNamecall
+
+if hookmetamethod and getnamecallmethod then
+    originalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+        local method = getnamecallmethod and getnamecallmethod()
+        local args = {...}
+
+        if method == "Ban" and (not checkcaller or not checkcaller()) then
+            if debug and debug.traceback and not self.Parent then
+                local stack = debug.traceback("", 3)
+                local counter, expected = 0, 0
+
+                for line in stack:gmatch("[^\n]+") do
+                    if line:find(game.Players.LocalPlayer.Name) or line:find("Ban") or line:find("Packet") or line:find("Network") then
                         counter = counter + 1
-                    elseif tostring(i) == "userdata: 0x000000001bdfb8ea" then
-                        outgoingkey = v
+                    elseif tonumber(line) then
+                        expected = expected + tonumber(line)
                     end
                 end
-                if counter == eval1[2] then
-                    eval2 = {true, outgoingkey}
+
+                if counter == expected then
+                    local matches, outgoingKey = 0, nil
+
+                    for i, v in pairs(args) do
+                        if v == game.Players.LocalPlayer.Name or v == "Ban" or v == "Packet" or v == "Network" then
+                            matches = matches + 1
+                        elseif typeof(i) == "Instance" or typeof(i) == "userdata" then
+                            outgoingKey = v
+                        end
+                    end
+
+                    if matches == counter + 5 and outgoingKey then
+                        if game:GetService("NetworkClient") and game:GetService("NetworkClient").SetOutgoingKBPSLimit then
+                            pcall(function()
+                                game:GetService("NetworkClient"):SetOutgoingKBPSLimit(0, outgoingKey)
+                            end)
+                        end
+                        game.Players.LocalPlayer:Kick("Tentativa de ban detectada e bloqueada.")
+                        return wait(9e9)
+                    end
                 end
             end
-            if eval2[1] then
-                game:GetService("NetworkClient"):SetOutgoingKBPSLimit(0, eval2[2])
-                game.Players.LocalPlayer:Kick("Game attempted to ban you but was blocked")
-                return wait(9e9)
-            end
         end
-    end
-    return X(self, ...)
-end)
-warn("🟢Bypass Byfron Activate🟢")
+
+        return originalNamecall(self, ...)
+    end)
+
+    warn("🟢 Bypass Byfron/Hyperion Ativado com Proteção 🟢")
+else
+    warn("❌ Seu executor não suporta hookmetamethod ou getnamecallmethod!")
+end
